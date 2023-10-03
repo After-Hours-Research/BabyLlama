@@ -1,0 +1,7 @@
+name: tinyshakespeare
+path: /home/sara/github_code/BabyLlama/data/tinyshakespeare.txt
+train_ratio: 0.6
+val_ratio: 0.2
+test_ratio: 0.2 
+train_batchsize: 2 
+val_test_batchsize: 2
