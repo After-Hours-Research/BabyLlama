@@ -50,11 +50,10 @@ class RMSnorm(nn.Module):
         self.gamma = nn.Parameter(torch.ones(size), requires_grad=True)
         
     def forward(self, x):
-        rms = torch.sqrt((x ** 2).mean(dim=(1, 2), keepdim=True) + self.eps) # as an alternative can also use the frobenius norm to compute rms
+        rms = torch.sqrt((x ** 2).mean(dim=-1, keepdim=True) + self.eps) # as an alternative can also use the frobenius norm to compute rms
         x_norm = x / rms
         
         return self.gamma.unsqueeze(0).unsqueeze(1) * x_norm
-    
     
 def get_rotary_matrix(context_len: int, embedding_dim: int) -> torch.Tensor:
     """
