@@ -48,7 +48,7 @@ class SelfAttentionBlock(nn.Module):
         score = query.permute(0,2,1,3) @ key.permute(0,2,3,1)
         if self.causal_attention:
             score += causal_mask(size=score.shape, device=score.device)
-        score = score / torch.sqrt(self.embedding_size)
+        score = score / torch.sqrt(self.head_dim)
         attention = torch.softmax(score, dim=-1) 
         x = attention @ value.permute(0,2,1,3)
         x = x.permute(0, 2, 1, 3).reshape(input_shape)

@@ -268,6 +268,7 @@ def _test_rotary():
     config = {
         'd_model': 256,
         'context_window': 128,
+        'batch_size': 16
     }
 
     R = get_rotary_matrix(config['context_window'], config['d_model'])
@@ -277,6 +278,10 @@ def _test_rotary():
     assert torch.allclose(R, R_torch_new, atol=1e-5), "Matrices are not equivalent!"
     assert torch.allclose(R_torch, R_torch_new, atol=1e-5), "Matrices are not equivalent!"
     print(R.shape)
+    
+    q = torch.randn((config['batch_size'], config['context_window'], config['d_model']))
+    print(q.shape)
+    breakpoint()
 
 if __name__ == '__main__':
     _test_rotary()

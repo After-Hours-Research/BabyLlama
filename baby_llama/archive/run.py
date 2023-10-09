@@ -40,7 +40,7 @@ trainer = ModelTrainer(
     wandb_project_name="", 
     wandb_entity_name="", 
     model=model,
-    data_module=datamodule,
+    datamodule=datamodule,
     max_epochs=2
     )
 
