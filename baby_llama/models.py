@@ -140,5 +140,5 @@ class SimpleModule(pl.LightningModule):
         return y_hat, loss
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3) # weight_decay = , betas=()
+        return torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay = 0.1, betas=(0.9, 0.95))
     
