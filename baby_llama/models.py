@@ -31,33 +31,36 @@ class LlamaSelfAttentionBlock(nn.Module):
         self.ff_v = nn.Linear(embedding_size, embedding_size, bias=False)
         
         self.fc1 = nn.Linear(embedding_size, embedding_size*2)
-        self.activation = SwiGLU(size=self.head_dim)
+        self.activation = SwiGLU(size=embedding_size*2)
         self.fc2 = nn.Linear(embedding_size*2, embedding_size)
     
-    def forward(self, x):
+    def forward(self, x, is_inference=False):
+        if is_inference:
+            breakpoint()
         input_shape = x.shape
-        resize = (x.shape[0], x.shape[1], self.n_heads, self.head_dim.item())
+        resize = (x.shape[0], x.shape[1], self.n_heads, self.head_dim)
         x_res = x
-        x = RMSnorm(x) # pre-normalization
+        x = self.rms(x) # pre-normalization
         query = self.ff_q(x).reshape(resize)
         key = self.ff_k(x).reshape(resize)
         value = self.ff_v(x).reshape(resize)
                 
-        # Apply rotation to query and key, separatly for each head         
-        query_rot = torch.einsum('bhld,ldd->bhld', query.permute(0,2,1,3), self.R.to(query.device))
-        key_rot = torch.einsum('bhdl,ldd->bhdl', key.permute(0,2,3,1), self.R.to(query.device))
+        # Apply rotation to query and key, separatly for each head  
+        R_matrix = self.R[:resize[1], :, :].to(query.device) 
+        query_rot = torch.einsum('bhld,ldd->bhld', query.permute(0,2,1,3), R_matrix)
+        key_rot = torch.einsum('bhdl,ldd->bhdl', key.permute(0,2,3,1), R_matrix)
         
         score = query_rot @ key_rot
         if self.causal_attention:
             score += causal_mask(size=score.shape, device=score.device)
-        score = score / torch.sqrt(self.embedding_size)
+        score = score / torch.sqrt(torch.tensor(self.head_dim)) 
         attention = torch.softmax(score, dim=-1) 
         x = attention @ value.permute(0,2,1,3)
         x = x.permute(0, 2, 1, 3).reshape(input_shape)
         x += x_res
         
         x_res = x
-        x = RMSnorm(x)
+        x = self.rms(x)
         x = self.fc1(x)
         x = self.activation(x)
         x = self.fc2(x)
@@ -79,9 +82,10 @@ class Llama(nn.Module):
         self.attention_block = nn.ModuleList([LlamaSelfAttentionBlock(hidden_size, context_len, causal_attention, n_heads) for _ in range(n_blocks)])
         self.unembedding = nn.Linear(hidden_size, vocab_size)
         
-    def forward(self, x):
+    def forward(self, x, is_inference=False):
         x = self.embedding(x)
-        x = self.attention_block(x)
+        for single_block in self.attention_block:
+            x = single_block(x, is_inference)
         x = self.unembedding(x)
         return x
 
@@ -95,24 +99,40 @@ class SimpleModule(pl.LightningModule):
         self.model = model
         self.loss = nn.CrossEntropyLoss()
         
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, x, is_inference=False):
+        return self.model(x, is_inference)
     
     def predict(self, x):
         # Predict the last next word, from all the previous ones
-        last_word = self(x)[:,-1,:]
+        last_word = self(x, is_inference=False)[:,-1,:]
         return torch.softmax(last_word, dim=1)
     
-    def _single_generate(self, x):
-        probs = self.predict(x)
+    def _single_generate(self, idx, context_len):
+        # Reshape the start_idx to (batch_size, 1)
+        # start_idx = start_idx.reshape(-1, 1)
+        # Generate the next token
+        probs = self.predict(idx[:,-context_len:])
         m = Categorical(probs)
         idx_next_token = m.sample()
         return idx_next_token.reshape(-1, 1)
     
-    def generate(self, x, max_output_token):
+    def generate(self, start_idx, context_len, max_output_token):
+        x = start_idx
         for _ in range(max_output_token):
-            x = torch.cat([x, self._single_generate(x)], dim=1)
+            next_token = self._single_generate(x, context_len)
+            x = torch.cat([x, next_token], dim=1)
         return x
+    
+    # def _single_generate(self, x):
+    #     probs = self.predict(x)
+    #     m = Categorical(probs)
+    #     idx_next_token = m.sample()
+    #     return idx_next_token.reshape(-1, 1)
+    
+    # def generate(self, x, max_output_token):
+    #     for _ in range(max_output_token):
+    #         x = torch.cat([x, self._single_generate(x)], dim=1)
+    #     return x
             
     def training_step(self, batch, batch_idx):
         _, loss = self._get_preds_loss(batch)
@@ -125,7 +145,7 @@ class SimpleModule(pl.LightningModule):
         return loss
     
     def test_step(self, batch, batch_idx):
-        return self.validation_step(self, batch, batch_idx, split_name="test")
+        return self.validation_step(batch, batch_idx, split_name="test")
     
     def _get_preds_loss(self, batch):
         x, y, _ = batch
@@ -134,5 +154,5 @@ class SimpleModule(pl.LightningModule):
         return y_hat, loss
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3)
+        return torch.optim.AdamW(self.parameters(), lr=1e-3) # weight_decay = , betas=()
     

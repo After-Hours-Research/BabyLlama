@@ -8,7 +8,7 @@ class ModelTrainer:
         wandb_project_name,
         wandb_entity_name,
         model, 
-        data_module, 
+        datamodule, 
         max_epochs,
         callbacks=None
         ):
@@ -16,7 +16,7 @@ class ModelTrainer:
         self.wandb_project_name = wandb_project_name
         self.wandb_entity_name = wandb_entity_name
         self.model = model
-        self.data_module = data_module
+        self.datamodule = datamodule
         self.max_epochs = max_epochs
         self.callbacks = callbacks
 
@@ -30,5 +30,5 @@ class ModelTrainer:
 
     def train(self):
         trainer = Trainer(max_epochs=self.max_epochs, callbacks=self.callbacks)
-        trainer.fit(model=self.model, datamodule=self.data_module)
+        trainer.fit(model=self.model, datamodule=self.datamodule)
         return trainer
