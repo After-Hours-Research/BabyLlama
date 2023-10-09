@@ -68,6 +68,7 @@ class CLMDataModule(pl.LightningDataModule):
       train_batchsize: int,
       val_test_batchsize: int,
       seed: int = 1,
+      num_workers: int = 4,
     ):
         super().__init__()
         self.data = data
@@ -76,6 +77,7 @@ class CLMDataModule(pl.LightningDataModule):
         self.test_ratio = test_ratio
         self.train_batchsize = train_batchsize
         self.val_test_batchsize = val_test_batchsize
+        self.num_workers = num_workers
         pl.seed_everything(seed)
 
     def setup(self, stage):
@@ -89,10 +91,10 @@ class CLMDataModule(pl.LightningDataModule):
             self.test = test
         
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.train_batchsize, shuffle=True)
+        return DataLoader(self.train, batch_size=self.train_batchsize, shuffle=True, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.val_test_batchsize, shuffle=False)
+        return DataLoader(self.val, batch_size=self.val_test_batchsize, shuffle=False, num_workers=self.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.test, batch_size=self.val_test_batchsize, shuffle=False)
+        return DataLoader(self.test, batch_size=self.val_test_batchsize, shuffle=False, num_workers=self.num_workers)
