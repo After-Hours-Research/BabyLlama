@@ -1,3 +1,4 @@
 defaults:
   - dataset: tinyshakespeare
   - model: llama
+  - trainer: standard

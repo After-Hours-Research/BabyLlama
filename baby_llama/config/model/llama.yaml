@@ -1,4 +1,4 @@
 context_len: 128
 hidden_size: 1024 
-n_heads: 2 
-n_blocks: 1
+n_heads: 8
+n_blocks: 8

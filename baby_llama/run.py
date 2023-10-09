@@ -18,23 +18,23 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 @hydra.main(config_path="config", config_name="parent.yaml", version_base=None)
 def main(cfg: Config) -> None:    
-    max_epochs = 1 # TODO: move it to config
-    num_workers = 4 # TODO: move it to config
-    
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    
     dataset = getfromtext(
         data_path=Path(cfg.dataset.path),
         tokenizer=tokenizer, 
         tokenizer_args=dict(return_tensors="pt", truncation=True, padding="max_length", max_length=cfg.model.context_len+1)) # 1 more to account for the label-shifting
+   
     datamodule = CLMDataModule(
         data=dataset, 
         train_ratio=cfg.dataset.train_ratio,
         val_ratio=cfg.dataset.val_ratio, 
         test_ratio=cfg.dataset.test_ratio, 
-        train_batchsize=2, 
-        val_test_batchsize=2,
-        num_workers=num_workers
+        train_batchsize=cfg.trainer.train_batchsize, 
+        val_test_batchsize=cfg.trainer.val_test_batchsize,
+        num_workers=cfg.trainernum_workers
         )
+    
     transformer = Llama(
         vocab_size=dataset.get_vocab_size, 
         hidden_size=cfg.model.hidden_size, 
@@ -50,13 +50,13 @@ def main(cfg: Config) -> None:
         wandb_entity_name="", 
         model=model,
         datamodule=datamodule,
-        max_epochs=max_epochs
+        max_epochs=cfg.trainer.max_epochs
         )
 
     trainer = trainer.train()
 
     val = trainer.validate(model=model, datamodule=datamodule)
-    test = trainer.test(model=model, datamodule=datamodule)
+    # test = trainer.test(model=model, datamodule=datamodule)
 
     # start_idx = dataset[0][0].unsqueeze(0)
     for _ in range(5):
