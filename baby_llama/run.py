@@ -32,7 +32,7 @@ def main(cfg: Config) -> None:
         test_ratio=cfg.dataset.test_ratio, 
         train_batchsize=cfg.trainer.train_batchsize, 
         val_test_batchsize=cfg.trainer.val_test_batchsize,
-        num_workers=cfg.trainernum_workers
+        num_workers=cfg.trainer.num_workers
         )
     
     transformer = Llama(
