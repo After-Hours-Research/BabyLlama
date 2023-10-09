@@ -108,31 +108,17 @@ class SimpleModule(pl.LightningModule):
         return torch.softmax(last_word, dim=1)
     
     def _single_generate(self, idx, context_len):
-        # Reshape the start_idx to (batch_size, 1)
-        # start_idx = start_idx.reshape(-1, 1)
         # Generate the next token
         probs = self.predict(idx[:,-context_len:])
         m = Categorical(probs)
         idx_next_token = m.sample()
         return idx_next_token.reshape(-1, 1)
     
-    def generate(self, start_idx, context_len, max_output_token):
-        x = start_idx
+    def generate(self, idx, context_len, max_output_token):
         for _ in range(max_output_token):
-            next_token = self._single_generate(x, context_len)
-            x = torch.cat([x, next_token], dim=1)
-        return x
-    
-    # def _single_generate(self, x):
-    #     probs = self.predict(x)
-    #     m = Categorical(probs)
-    #     idx_next_token = m.sample()
-    #     return idx_next_token.reshape(-1, 1)
-    
-    # def generate(self, x, max_output_token):
-    #     for _ in range(max_output_token):
-    #         x = torch.cat([x, self._single_generate(x)], dim=1)
-    #     return x
+            next_token = self._single_generate(idx, context_len)
+            idx = torch.cat([idx, next_token], dim=1)
+        return idx
             
     def training_step(self, batch, batch_idx):
         _, loss = self._get_preds_loss(batch)
