@@ -10,6 +10,7 @@ from baby_llama.data.utils import getfromtext
 from baby_llama.train import ModelTrainer
 from baby_llama.config import Config
 from torch import nn
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -18,12 +19,13 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 @hydra.main(config_path="config", config_name="parent.yaml", version_base=None)
 def main(cfg: Config) -> None:    
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer_name = "gpt2" if cfg.dataset.tokenizer_path is None else cfg.dataset.tokenizer_path
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     
     dataset = getfromtext(
         data_path=Path(cfg.dataset.path),
         tokenizer=tokenizer, 
-        tokenizer_args=dict(return_tensors="pt", truncation=True, padding="max_length", max_length=cfg.model.context_len+1)) # 1 more to account for the label-shifting
+        tokenizer_args=dict(return_tensors="pt", add_special_tokens=True, truncation=True, padding="max_length", max_length=cfg.model.context_len+1)) # 1 more to account for the label-shifting
    
     datamodule = CLMDataModule(
         data=dataset, 
@@ -43,28 +45,45 @@ def main(cfg: Config) -> None:
         n_heads=cfg.model.n_heads, 
         n_blocks=cfg.model.n_blocks
         )
-    model = SimpleModule(transformer)
-
-    trainer = ModelTrainer(
-        wandb_project_name="", 
-        wandb_entity_name="", 
-        model=model,
-        datamodule=datamodule,
-        max_epochs=cfg.trainer.max_epochs
+    model = SimpleModule(
+        transformer, 
+        tokenizer=tokenizer
         )
 
-    trainer = trainer.train()
+    # Initialize Learning Rate Monitor callback
+    lr_monitor_callback = LearningRateMonitor(logging_interval='step')
+    # Initialize ModelCheckpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        mode='min',
+        save_last=False,  # If you want to save the last model in addition to the best.
+        filename='{epoch}-{val_loss:.2f}',
+        auto_insert_metric_name=False  # To avoid prepending monitored metric name to filename
+    )
+    
+    modeltrainer = ModelTrainer(
+        wandb_project_name=cfg.wandb_project_name, 
+        wandb_entity_name=cfg.wandb_entity_name, 
+        wandb_disable_log=cfg.wandb_disable_log, 
+        model=model,
+        datamodule=datamodule,
+        max_epochs=cfg.trainer.max_epochs,
+        check_val_every_n_epoch=cfg.trainer.check_val_every_n_epoch,
+        callbacks=[lr_monitor_callback, checkpoint_callback]
+        )
+    
+    # Update experiment config on wandb
+    modeltrainer.wandb_logger.experiment.config.update(OmegaConf.to_container(cfg))
+
+    trainer = modeltrainer.train()
 
     val = trainer.validate(model=model, datamodule=datamodule)
-    # test = trainer.test(model=model, datamodule=datamodule)
 
-    # start_idx = dataset[0][0].unsqueeze(0)
     for _ in range(5):
-        start_idx = torch.tensor([tokenizer.bos_token_id]).unsqueeze(0)
-
-        outputs = model.generate(start_idx, context_len=cfg.model.context_len, max_output_token=50)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=False)
-        print(f"Full Text: \n{decoded}")
+        _, outputs_decoded = model.generate(context_len=cfg.model.context_len, max_output_token=50)
+        print(f"Full Text: \n{outputs_decoded}")
+        
+    modeltrainer.wandb_close()
 
 if __name__ == "__main__":
     main()
