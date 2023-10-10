@@ -1,3 +1,4 @@
+from loguru import logger
 from typing import TYPE_CHECKING
 import datasets
 import pytorch_lightning as pl
@@ -28,8 +29,14 @@ class CLMDataset(Dataset):
         """
         Tokenizes the data using the provided tokenizer and tokenizer_args.
         """
+        init_vs = len(self.tokenizer)
         if self.tokenizer.pad_token is None:
             self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            self.tokenizer.add_special_tokens({'bos_token': '<s>'})
+            self.tokenizer.add_special_tokens({'eos_token': '</s>'})
+            self.tokenizer.add_special_tokens({'unk_token': '[UNK]'})
+            logger.info(f"Added special tokens: {self.tokenizer.special_tokens_map}")
+            logger.info(f"Vocab size from: {init_vs}, to {len(self.tokenizer)}")
         self.tokens = self.tokenizer(self.data, **self.tokenizer_args)
 
     def __len__(self):
