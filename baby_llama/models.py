@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 from torch.distributions import Categorical
+from torch.optim.lr_scheduler import OneCycleLR
+from transformers import AutoTokenizer
 import pytorch_lightning as pl
 from baby_llama.utils import get_rotary_matrix, RMSnorm, SwiGLU
 
@@ -78,6 +80,7 @@ class Llama(nn.Module):
         n_blocks: int
         ):
         super().__init__()
+        self.context_len = context_len
         self.embedding = nn.Embedding(vocab_size, hidden_size)
         self.attention_block = nn.ModuleList([LlamaSelfAttentionBlock(hidden_size, context_len, causal_attention, n_heads) for _ in range(n_blocks)])
         self.unembedding = nn.Linear(hidden_size, vocab_size)
@@ -94,10 +97,12 @@ class SimpleModule(pl.LightningModule):
     def __init__(
         self, 
         model: nn.Module,
+        tokenizer: AutoTokenizer,
         ):
         super().__init__()
         self.model = model
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+        self.tokenizer = tokenizer
         
     def forward(self, x, is_inference=False):
         return self.model(x, is_inference)
@@ -114,11 +119,13 @@ class SimpleModule(pl.LightningModule):
         idx_next_token = m.sample()
         return idx_next_token.reshape(-1, 1)
     
-    def generate(self, idx, context_len, max_output_token):
+    def generate(self, context_len, max_output_token):
+        idx = torch.tensor([self.tokenizer.bos_token_id]).unsqueeze(0).to(self.device)
         for _ in range(max_output_token):
             next_token = self._single_generate(idx, context_len)
             idx = torch.cat([idx, next_token], dim=1)
-        return idx
+        decoded = self.tokenizer.decode(idx[0], skip_special_tokens=False)
+        return idx, decoded
             
     def training_step(self, batch, batch_idx):
         _, loss = self._get_preds_loss(batch)
@@ -127,8 +134,14 @@ class SimpleModule(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx, split_name="val"):
         _, loss = self._get_preds_loss(batch)
-        self.log(f'{split_name}_loss', loss)
+        self.log(f'{split_name}_loss', loss)        
         return loss
+    
+    def on_validation_end(self) -> None:
+        _, output_decoded = self.generate(context_len=self.model.context_len, max_output_token=50)
+        print(f"Full Text: \n{output_decoded}")
+        self.logger.log_text(key="Example Text Generation", columns=["Epoch", "Text"], data=[[self.current_epoch, output_decoded]], )
+        return super().on_validation_end()
     
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx, split_name="test")
@@ -137,8 +150,24 @@ class SimpleModule(pl.LightningModule):
         x, y, _ = batch
         y_hat = self.model(x)
         loss = self.loss(y_hat.view(-1, y_hat.shape[-1]), y.view(-1))
+        if loss > 10000:
+            loss_new= nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id, reduction='none')
+            breakpoint()
         return y_hat, loss
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay = 0.1, betas=(0.9, 0.95))
+        max_step = self.trainer.max_epochs * (len(self.trainer.datamodule.train_dataloader()))
+        optimizer = torch.optim.AdamW(self.parameters(), lr=3e-4, weight_decay = 0.1, betas=(0.9, 0.95))
+        scheduler = {
+            'scheduler': OneCycleLR(
+                optimizer,
+                max_lr=3e-4,  # Maximum learning rate
+                total_steps=max_step,  # Total number of training steps
+                pct_start=0.03,  # Percentage of steps spent in the warmup phase
+                anneal_strategy='cos',  # Cosine annealing
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+        return {'optimizer': optimizer, 'lr_scheduler': scheduler}
     
