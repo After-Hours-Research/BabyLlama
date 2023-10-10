@@ -1,5 +1,6 @@
 name: tinyshakespeare
 path: /home/sara/github_code/BabyLlama/data/tinyshakespeare.txt
+tokenizer_path: /home/sara/github_code/BabyLlama/data/tokenizer/
 train_ratio: 0.8
 val_ratio: 0.2
 test_ratio: 0.
