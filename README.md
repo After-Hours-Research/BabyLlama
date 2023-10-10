@@ -1,5 +1,10 @@
 # Baby Llama From Scratch
-This is an implementation of Llama from scratch. It includes writing our own attention mechanism that include the three main components of the Llama paper:
+This is an implementation of Llama from scratch. This project is inspired by ![Llama from scratch](https://github.com/bkitano/llama-from-scratch/tree/ce3e52f4f154ce16345927c4f2c5082b5ecfea13).
+
+TODO: include differences, e.g. pytorch lighting, architecture a bit different, optimizer, tokenizer.
+
+
+It includes writing our own attention mechanism that include the three main components of the Llama paper:
 1. RMSNorm for pre-normalization
 2. RoPE (Rotary Positional Embedding)
 3. SwiGLU activation function
