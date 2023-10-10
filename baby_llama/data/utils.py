@@ -23,8 +23,6 @@ def getfromtext(
         else:
             data_max_length.append(d)    
             
-            
     logger.info(f"Combining samples based on max len: from {len(data)} to {len(data_max_length)} samples.")
                     
-    # Remove last sample, it could look weird e.g. mainly padding tokens data_max_length[:-1]
     return CLMDataset(data=data_max_length, tokenizer=tokenizer, tokenizer_args=tokenizer_args)

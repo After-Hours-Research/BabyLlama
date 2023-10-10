@@ -3,7 +3,6 @@ import torch
 from torch import nn
 from tokenizers import pre_tokenizers
 
-
 def words_level_tokeniser(data: List[str]):
     # Unique set of words
     words_list = list({w for sentence in data for w in sentence.split()})
