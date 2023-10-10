@@ -1,5 +1,5 @@
 # Baby Llama From Scratch
-This is an implementation of Llama from scratch. This project is inspired by ![Llama from scratch](https://github.com/bkitano/llama-from-scratch/tree/ce3e52f4f154ce16345927c4f2c5082b5ecfea13).
+This is an implementation of Llama from scratch. This project is inspired by [Llama from scratch](https://github.com/bkitano/llama-from-scratch/tree/ce3e52f4f154ce16345927c4f2c5082b5ecfea13).
 
 TODO: include differences, e.g. pytorch lighting, architecture a bit different, optimizer, tokenizer.
 
@@ -28,13 +28,12 @@ RMSNorm is used to normalize the input of each transformer sub-layer. The inspir
 
 RMSNorm is a simplification of the LayerNorm, it is computationally simpler and thus more efficient than LayerNorm. The main differences between the two are that RMSNorm 1) uses the root mean square, instead of the standard devation, for re-scaling and 2) it's not re-centering invariant.
 
-For more mathematical and implementation details about RMSNorm and its differences with Batch Normalization and Layer Normalization, refer to our dedicated blog post: 
-https://afterhoursresearch.hashnode.dev/batch-normalization-layer-normalization-and-root-mean-square-layer-normalization-a-comprehensive-guide-with-python-implementations
+For more mathematical and implementation details about RMSNorm and its differences with Batch Normalization and Layer Normalization, refer to our dedicated [blog post](https://afterhoursresearch.hashnode.dev/batch-normalization-layer-normalization-and-root-mean-square-layer-normalization-a-comprehensive-guide-with-python-implementations).
 
 ## RoPE (Rotary Positional Embedding)
 RoPE is based on the idea of embedding the position of a token in a sequence by rotating queries and keys in the attention mechanism, with a different rotation at each position.
 
-We wrote a blog post on RoPE, focusing on its mathematical formulation and its practical implementation in PyTorch: https://afterhoursresearch.hashnode.dev/rope-rotary-positional-embedding
+We wrote a [blog post](https://afterhoursresearch.hashnode.dev/rope-rotary-positional-embedding) on RoPE, focusing on its mathematical formulation and its practical implementation in PyTorch.
 
 ## SwiGLU
 SwiGLU activation function: Use a dimension of $\frac{2}{3}4d$. Also used in PaLM (their dimension is $4d$).
