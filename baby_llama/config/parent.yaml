@@ -2,3 +2,6 @@ defaults:
   - dataset: tinyshakespeare
   - model: llama
   - trainer: standard
+wandb_project_name: baby_llama
+wandb_entity_name: sara
+wandb_disable_log: False
