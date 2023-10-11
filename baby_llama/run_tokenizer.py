@@ -1,32 +1,38 @@
 from loguru import logger
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer, models, trainers, pre_tokenizers, processors, decoders
 from transformers import PreTrainedTokenizerFast
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import Split
 import hydra
 from baby_llama.config import DatasetConfig
 
 @hydra.main(config_path="config/dataset", config_name="tinyshakespeare.yaml", version_base=None)
 def main(cfg: DatasetConfig) -> None:   
-    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    tokenizer.pre_tokenizer = Split(pattern=" ", behavior="removed")
+    tokenizer = Tokenizer(models.BPE(unk_token="[UNK]"))
+    # tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    # tokenizer.decoder = decoders.ByteLevel()
+    tokenizer.pre_tokenizer = pre_tokenizers.Metaspace(replacement="Ġ", add_prefix_space=False)
+    tokenizer.decoder = decoders.Metaspace(replacement="Ġ", add_prefix_space=False)
+    # Split(pattern=" ", behavior="removed")
     
-    trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "<s>", "</s>"])
+    trainer = trainers.BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"])
+    
+    tokenizer.post_processor = processors.TemplateProcessing(
+            single="[BOS] $A [EOS]",
+            special_tokens=[("[BOS]", 2), ("[EOS]", 3)],
+    )
 
     tokenizer.train([cfg.path], trainer)
     
     encodings = tokenizer.encode("CORIOLANUS: \n It is apart \n That I shall blush in acting, and might well \n Be taken from the people.")
+    decodings = tokenizer.decode(encodings.ids)
     print(f"IDS: {encodings.ids}")
-    print(f"Tokens: {encodings.tokens}")
+    print(f"Tokend: {encodings.tokens}")
+    print(f"Tokens: {decodings}")
     
     logger.info(f"Tokenizer created with vocab size: {tokenizer.get_vocab_size()}")
     
     pretrained_tokenizer = PreTrainedTokenizerFast(tokenizer_object=tokenizer)
     pretrained_tokenizer.save_pretrained(cfg.tokenizer_path)
-    
-    # tokenizer.save(f"{cfg.tokenizer_path}config.json")
-    # tokenizer.model.save(f"{cfg.tokenizer_path}")
+
 
 if __name__ == "__main__":
     main()
