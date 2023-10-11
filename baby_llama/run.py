@@ -81,7 +81,7 @@ def main(cfg: Config) -> None:
 
     for _ in range(5):
         _, outputs_decoded = model.generate(context_len=cfg.model.context_len, max_output_token=50)
-        print(f"Full Text: \n{outputs_decoded}")
+        print(f"\nFull Text: \n{outputs_decoded}")
         
     modeltrainer.wandb_close()
 

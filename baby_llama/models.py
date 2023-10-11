@@ -107,23 +107,45 @@ class SimpleModule(pl.LightningModule):
     def forward(self, x, is_inference=False):
         return self.model(x, is_inference)
     
-    def predict(self, x):
-        # Predict the last next word, from all the previous ones
-        last_word = self(x, is_inference=False)[:,-1,:]
-        return torch.softmax(last_word, dim=1)
-    
-    def _single_generate(self, idx, context_len):
-        # Generate the next token
-        probs = self.predict(idx[:,-context_len:])
+    def _single_generate(self, idx, context_len, temperature=0.9, top_k=0, top_p=0.0, greedy=False):
+        logits = self(idx[:, -context_len:], is_inference=False)[:, -1, :]
+        logits = logits / temperature
+        
+        if greedy:
+            probs = torch.softmax(logits, dim=1)
+            return torch.argmax(probs, dim=1).reshape(-1, 1)
+        
+        # Initialize mask with ones
+        mask = torch.ones_like(logits).bool()
+        
+        if top_k > 0:
+            top_k = min(top_k, logits.shape[1])
+            _, top_k_indices = torch.topk(logits, top_k)
+            mask.scatter_(1, top_k_indices, False)
+        
+        if top_p > 0.0:
+            sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+            cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=1), dim=1)
+            sorted_mask = cumulative_probs > top_p
+            # Ensure at least the most probable is included if sorted_mask contains all True 
+            if sorted_mask.all():
+                sorted_mask[0] = False
+            mask.scatter_(1, sorted_indices, sorted_mask)
+            
+        # Set non-top logits to -inf
+        logits[mask] = float('-inf')
+        probs = torch.softmax(logits, dim=1)
         m = Categorical(probs)
         idx_next_token = m.sample()
         return idx_next_token.reshape(-1, 1)
-    
+
     def generate(self, context_len, max_output_token):
         idx = torch.tensor([self.tokenizer.bos_token_id]).unsqueeze(0).to(self.device)
         for _ in range(max_output_token):
             next_token = self._single_generate(idx, context_len)
             idx = torch.cat([idx, next_token], dim=1)
+            # if next_token.item() == self.tokenizer.eos_token_id:
+            #     break
         decoded = self.tokenizer.decode(idx[0], skip_special_tokens=False)
         return idx, decoded
             
