@@ -37,3 +37,16 @@ We wrote a [blog post](https://afterhoursresearch.hashnode.dev/rope-rotary-posit
 
 ## SwiGLU
 SwiGLU activation function: Use a dimension of $\frac{2}{3}4d$. Also used in PaLM (their dimension is $4d$).
+
+
+## Train a Tokenizer
+```
+Token Ids: [2, 725, 12, 68, 67, 5327, 137, 6799, 68, 67, 9936, 104, 227, 4150, 120, 9025, 8, 109, 771, 371, 68, 67, 4391, 3236, 289, 80, 1005, 10, 3]]
+
+Encoded Tokens : ['[BOS]', 'CORIOLANUS', ':', 'Ġ', 'Ċ', 'ĠIt', 'Ġis', 'Ġapart', 'Ġ', 'Ċ', 'ĠThat', 'ĠI', 'Ġshall', 'Ġblush', 'Ġin', 'Ġacting', ',', 'Ġand', 'Ġmight', 'Ġwell', 'Ġ', 'Ċ', 'ĠBe', 'Ġtaken', 'Ġfrom', 'Ġthe', 'Ġpeople', '.', '[EOS]']
+
+Decoded Tokens: CORIOLANUS: 
+ It is apart 
+ That I shall blush in acting, and might well 
+ Be taken from the people.
+ ```
