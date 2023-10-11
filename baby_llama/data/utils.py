@@ -18,8 +18,8 @@ def getfromtext(
     data_max_length = [""]
     for d in tqdm(data):
         sentence_token = tokenizer(data_max_length[-1] + d)
-        if len(sentence_token["input_ids"]) < tokenizer_args['max_length']:
-            data_max_length[-1] = data_max_length[-1] + "\n" + d
+        if len(sentence_token["input_ids"])+3 < tokenizer_args['max_length']:
+            data_max_length[-1] = data_max_length[-1] + "[EOS]\n[BOS]" + d
         else:
             data_max_length.append(d)    
             
