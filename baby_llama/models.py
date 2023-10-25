@@ -19,6 +19,7 @@ class LlamaSelfAttentionBlock(nn.Module):
         context_len: int,
         causal_attention: bool,
         n_heads: int,
+        swiglu_d_moltiplier: float
         ):
         super().__init__()
         # self.embedding_size = torch.tensor(embedding_size)
@@ -33,9 +34,11 @@ class LlamaSelfAttentionBlock(nn.Module):
         self.ff_q = nn.Linear(embedding_size, embedding_size, bias=False)
         self.ff_v = nn.Linear(embedding_size, embedding_size, bias=False)
         
-        self.fc1 = nn.Linear(embedding_size, embedding_size*2)
-        self.activation = SwiGLU(size=embedding_size*2)
-        self.fc2 = nn.Linear(embedding_size*2, embedding_size)
+        # In Llama paper swiglu_d_moltiplier = 2/3 * 4 
+        swiglu_size = int(swiglu_d_moltiplier * embedding_size)
+        self.fc1 = nn.Linear(embedding_size, swiglu_size)
+        self.activation = SwiGLU(size=swiglu_size)
+        self.fc2 = nn.Linear(swiglu_size, embedding_size)
     
     def forward(self, x, is_inference=False):
         if is_inference:
@@ -78,12 +81,13 @@ class Llama(nn.Module):
         context_len: int,
         causal_attention: bool,
         n_heads: int,
-        n_blocks: int
+        n_blocks: int,
+        swiglu_d_moltiplier: float,
         ):
         super().__init__()
         self.context_len = context_len
         self.embedding = nn.Embedding(vocab_size, hidden_size)
-        self.attention_block = nn.ModuleList([LlamaSelfAttentionBlock(hidden_size, context_len, causal_attention, n_heads) for _ in range(n_blocks)])
+        self.attention_block = nn.ModuleList([LlamaSelfAttentionBlock(hidden_size, context_len, causal_attention, n_heads, swiglu_d_moltiplier) for _ in range(n_blocks)])
         self.unembedding = nn.Linear(hidden_size, vocab_size)
         
     def forward(self, x, is_inference=False):
@@ -143,7 +147,7 @@ class SimpleModule(pl.LightningModule):
         idx_next_token = m.sample()
         return idx_next_token.reshape(-1, 1)
 
-    def generate(self, context_len, max_output_token, temperature=1, top_k=0, top_p=0.0, greedy=False):
+    def generate(self, context_len, max_output_token, temperature=1, top_k=0, top_p=0.9, greedy=False):
         idx = torch.tensor([self.tokenizer.bos_token_id]).unsqueeze(0).to(self.device)
         for _ in range(max_output_token):
             next_token = self._single_generate(idx, context_len, temperature, top_k, top_p, greedy)

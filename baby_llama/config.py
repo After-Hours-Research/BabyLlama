@@ -15,6 +15,7 @@ class ModelConfig:
     hidden_size: int
     n_heads: int
     n_blocks: int
+    swiglu_d_moltiplier: float
     
 @dataclass
 class TrainerConfig:

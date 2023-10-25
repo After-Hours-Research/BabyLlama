@@ -43,8 +43,10 @@ def main(cfg: Config) -> None:
         context_len=cfg.model.context_len, 
         causal_attention=True, 
         n_heads=cfg.model.n_heads, 
-        n_blocks=cfg.model.n_blocks
+        n_blocks=cfg.model.n_blocks,
+        swiglu_d_moltiplier=cfg.model.swiglu_d_moltiplier
         )
+    
     model = SimpleModule(
         transformer, 
         tokenizer=tokenizer
@@ -78,11 +80,21 @@ def main(cfg: Config) -> None:
     trainer = modeltrainer.train()
 
     val = trainer.validate(model=model, datamodule=datamodule)
+    
+    generation_config = {"greedy": {"temperature":1, "top_k":0, "top_p":0.0, "greedy":True}, 
+                         "rnd_sampling": {"temperature":1, "top_k":0, "top_p":0.0, "greedy":False},
+                         "rnd_sampling_t": {"temperature":0.7, "top_k":0, "top_p":0.0, "greedy":False},
+                         "topk_sampling": {"temperature":1, "top_k":40, "top_p":0.0, "greedy":False},
+                         "topk_sampling_t": {"temperature":0.7, "top_k":40, "top_p":0.0, "greedy":False},
+                         "topp_sampling": {"temperature":1, "top_k":0, "top_p":0.9, "greedy":False},
+                         "topp_sampling_t": {"temperature":0.7, "top_k":0, "top_p":0.9, "greedy":False},
+                         }
 
-    for _ in range(5):
-        _, outputs_decoded = model.generate(context_len=cfg.model.context_len, max_output_token=50)
-        print(f"\nFull Text: \n{outputs_decoded}")
-        
+    for _ in range(2):
+        for conf_k, conf_v in generation_config.items():
+            _, outputs_decoded = model.generate(context_len=cfg.model.context_len, max_output_token=300, **conf_v)
+            print(f"\nFull Text, {conf_k}: \n{outputs_decoded}")
+            
     modeltrainer.wandb_close()
 
 if __name__ == "__main__":
