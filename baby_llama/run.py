@@ -15,8 +15,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# root_dir = Path(__file__).parent
-
 @hydra.main(config_path="config", config_name="parent.yaml", version_base=None)
 def main(cfg: Config) -> None:    
     tokenizer_name = "gpt2" if cfg.dataset.tokenizer_path is None else cfg.dataset.tokenizer_path

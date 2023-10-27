@@ -22,7 +22,6 @@ class LlamaSelfAttentionBlock(nn.Module):
         swiglu_d_moltiplier: float
         ):
         super().__init__()
-        # self.embedding_size = torch.tensor(embedding_size)
         self.embedding_size = embedding_size
         self.causal_attention = causal_attention
         self.n_heads = n_heads
@@ -40,9 +39,7 @@ class LlamaSelfAttentionBlock(nn.Module):
         self.activation = SwiGLU(size=swiglu_size)
         self.fc2 = nn.Linear(swiglu_size, embedding_size)
     
-    def forward(self, x, is_inference=False):
-        if is_inference:
-            breakpoint()
+    def forward(self, x):
         input_shape = x.shape
         resize = (x.shape[0], x.shape[1], self.n_heads, self.head_dim)
         x_res = x
@@ -90,10 +87,10 @@ class Llama(nn.Module):
         self.attention_block = nn.ModuleList([LlamaSelfAttentionBlock(hidden_size, context_len, causal_attention, n_heads, swiglu_d_moltiplier) for _ in range(n_blocks)])
         self.unembedding = nn.Linear(hidden_size, vocab_size)
         
-    def forward(self, x, is_inference=False):
+    def forward(self, x):
         x = self.embedding(x)
         for single_block in self.attention_block:
-            x = single_block(x, is_inference)
+            x = single_block(x)
         x = self.unembedding(x)
         return x
 
@@ -111,11 +108,11 @@ class SimpleModule(pl.LightningModule):
         
         self.logger_table_data = []   
         
-    def forward(self, x, is_inference=False):
-        return self.model(x, is_inference)
+    def forward(self, x):
+        return self.model(x)
     
     def _single_generate(self, idx, context_len, temperature, top_k, top_p, greedy):
-        logits = self(idx[:, -context_len:], is_inference=False)[:, -1, :]
+        logits = self(idx[:, -context_len:])[:, -1, :]
         logits = logits / temperature
         
         if greedy:
@@ -157,15 +154,13 @@ class SimpleModule(pl.LightningModule):
         decoded = self.tokenizer.decode(idx[0], skip_special_tokens=False)
         return idx, decoded
             
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, split_name="train"):
         _, loss = self._get_preds_loss(batch)
-        self.log('train_loss', loss)
+        self.log(f'{split_name}_loss', loss)
         return loss
     
-    def validation_step(self, batch, batch_idx, split_name="val"):
-        _, loss = self._get_preds_loss(batch)
-        self.log(f'{split_name}_loss', loss)        
-        return loss
+    def validation_step(self, batch, batch_idx):
+        return self.training_step(batch, batch_idx, split_name="val")
     
     def on_validation_end(self) -> None:
         _, output_decoded = self.generate(context_len=self.model.context_len, max_output_token=50)
@@ -176,7 +171,7 @@ class SimpleModule(pl.LightningModule):
         return super().on_validation_end()
     
     def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx, split_name="test")
+        return self.training_step(batch, batch_idx, split_name="test")
     
     def _get_preds_loss(self, batch):
         x, y, _ = batch
