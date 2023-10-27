@@ -1,5 +1,5 @@
 max_epochs: 10
 check_val_every_n_epoch: 1
 num_workers: 4 
-train_batchsize: 16
+train_batchsize: 8
 val_test_batchsize: 8
