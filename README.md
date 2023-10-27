@@ -721,7 +721,7 @@ Or else you like not of my company.[EOS]
 
 Remember, `[BOS]` and `[EOS]` are the special tokens we defined to describe the beginning and end of sentence. 
 
-The results are not perfect, but we think they look very promising since we are only training for 10 epochs, using a small nework (8 layers), hidden dimesion (1024), context lenght (256) and training batch size (8). 
+The results are not perfect, but we think they look very promising since we are only training for 10 epochs, using a small nework (8 layers), hidden dimesion (1024), context lenght (256) and training batch size (8). You can check the [wandb run](https://wandb.ai/sara/baby_llama/runs/wk7kkl37/overview?workspace=user-sara) to see all the configurations and generation examples during traing for this experiment.
 
 The whole code for training our Llama model and to generate some examples can easily be run with:
 ```python
