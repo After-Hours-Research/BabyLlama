@@ -8,8 +8,10 @@ Our project is comprehensive and, among other things, includes constructing our 
 3. SwiGLU activation function
 
 To help visualize the architecture, here's a diagram illustrating a single block of our model:
-![](/imgs/diagram1.png)
 
+<div style="text-align:center">
+<img src="imgs/diagram1.png" width="50%" height="50%"/>
+</div>
 
 ## Setting Up the Environment
 First things first: let's set up our development environment to ensure that everything runs smoothly. For this project, we'll be using Python 3.10 and manage our dependencies using Poetry. Here's how you can set it up:
