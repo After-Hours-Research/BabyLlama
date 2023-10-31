@@ -468,7 +468,6 @@ def on_validation_end(self) -> None:
     self.logger.log_table(key="Example Text Generation", columns=["Epoch", "Text"], data=self.logger_table_data, )
     return super().on_validation_end()
 ```
-TODO: need to say where the logger is coming from!!!!
 
 `LightningModule` also allows to easily configure the optimizer by overwriting the `configure_optimizers` method in our custom `SimpleModule`:
 ```python
@@ -488,7 +487,6 @@ def configure_optimizers(self):
     }
     return {'optimizer': optimizer, 'lr_scheduler': scheduler}
 ```
-TODO: why do we have access to self.trainer? SimpleModule is called within the trainer object!!!!!
 
 This method returns a dictionary containing the optimizer and the learning rate scheduler to be used by the PyTorch Lightning `Trainer` - which we'll define in a sec!
 The optimizer is `AdamW` (very straightforward to use!) and the learning rate scheduler is used to set the learning rate of each parameter group according to the 1cycle learning rate policy (`OneCycleLR`). Let's see all the components:
@@ -498,6 +496,9 @@ The optimizer is `AdamW` (very straightforward to use!) and the learning rate sc
 - `anneal_strategy='cos'`: uses cosine annealing for the learning rate schedule.
 - `interval`: specifies the scheduler should update at every step, as an alternative we could update it at every epoch.
 - `frequency`: sets the update frequency to 1, meaning the scheduler updates every time it's called.
+
+Since our `SimpleModule` inherits from `LightningModule`, it has several built-in attributes and methods, among which `self.logger` (used in our `on_validation_end`) and `self.trainer` (used in `configure_optimizers`). When we will create our `Trainer` object (later in our post) and define our custum attributes `logger` and `trainer`, PyTorch Lightning internally will set both `self.logger`  and `self.trainer` within our `LightningModule` (`SimpleModule`) - one more reason to use Lightning!
+
 
 ## Token Generation: Where the Magic Happens
 One of the exciting parts of `SimpleModule` is its token generation capabilities. Whether you want to use greedy decoding, random sampling, top-k, or top-p sampling, it has you covered.
